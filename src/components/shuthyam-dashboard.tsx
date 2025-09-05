@@ -35,18 +35,14 @@ import { Home, ClipboardList, History, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import AssignedDutiesPage from "./assigned-duties-page";
 import HistoryPage from "./history-page";
+import { fetchFromUrl } from "@/ai/flows/fetch-from-url";
+import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
 
 const washrooms = [
     'Washroom 1',
     'Washroom 2',
     'Washroom 3',
-    'Washroom 4',
-    'Washroom 5',
-    'Washroom 6',
-    'Washroom 7',
-    'Washroom 8',
-    'Washroom 9',
-    'Washroom 10',
 ];
 
 const generateCleanlinessData = () => {
@@ -56,18 +52,14 @@ const generateCleanlinessData = () => {
     }));
 };
 
-const generateReportData = () => {
-    const now = new Date();
-    return Array.from({ length: washrooms.length }, (_, i) => {
-        const reportTime = new Date(now.getTime() - Math.random() * 1000 * 60 * 60 * 24);
-        return {
-            id: i,
-            washroom: washrooms[i],
-            date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
-            time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            peopleUsed: Math.floor(Math.random() * 401) + 100,
-        }
-    }).sort((a,b) => a.washroom.localeCompare(b.washroom));
+const generateInitialReportData = () => {
+    return washrooms.map((name, i) => ({
+        id: i,
+        washroom: name,
+        date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
+        time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        peopleUsed: 0,
+    }));
 };
 
 const cleaningStaff = [
@@ -96,24 +88,72 @@ export default function ShuthyamDashboard() {
   const [selectedStaff, setSelectedStaff] = React.useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [assignedDuties, setAssignedDuties] = React.useState<AssignedDuty[]>([]);
+  const [isLive, setIsLive] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
     const newCleanlinessData = generateCleanlinessData();
-    const newReportData = generateReportData();
+    const newReportData = generateInitialReportData();
     setCleanlinessData(newCleanlinessData);
     setReportData(newReportData);
+  }, []);
 
-    newReportData.forEach(report => {
-        if (report.peopleUsed > 400) {
+  React.useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    const fetchLiveCount = async () => {
+        try {
+            const response = await fetchFromUrl({ url: 'http://127.0.0.1:5000/count' });
+            const personCount = response.data?.count ?? 0;
+            
+            setReportData(prevData => {
+                // In a real scenario, you might have separate endpoints for each washroom.
+                // For this demo, we'll update one of the washrooms with the fetched count.
+                // Let's cycle through which washroom gets updated.
+                const washroomIndexToUpdate = Math.floor(Date.now() / 5000) % washrooms.length;
+                
+                const newData = prevData.map((report, index) => {
+                    if (index === washroomIndexToUpdate) {
+                        const updatedReport = { ...report, peopleUsed: personCount };
+                        
+                        if (updatedReport.peopleUsed > 20) { // Using a smaller threshold for demo
+                            toast({
+                                variant: "destructive",
+                                title: "High Washroom Usage Alert",
+                                description: `${updatedReport.washroom} is currently busy.`,
+                            });
+                        }
+                        return updatedReport;
+                    }
+                    // Optionally reset other counts if you want only one to be "live" at a time
+                    return report; 
+                });
+                return newData;
+            });
+        } catch (error) {
+            console.error("Failed to fetch live count:", error);
             toast({
                 variant: "destructive",
-                title: "High Washroom Usage Alert",
-                description: `${report.washroom} has been used by over 400 people.`,
-            })
+                title: "Live Feed Error",
+                description: "Could not connect to the Python server. Please ensure it's running.",
+            });
+            setIsLive(false); // Turn off the switch on error
         }
-    })
-  }, [toast]);
+    };
+
+    if (isLive) {
+      // Fetch immediately and then set an interval
+      fetchLiveCount();
+      intervalId = setInterval(fetchLiveCount, 5000); // Fetch every 5 seconds
+    }
+
+    // Cleanup function to clear the interval when the component unmounts or isLive becomes false
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isLive, toast]);
 
   const handleAssignDuty = () => {
     if (selectedWashroom && selectedStaff) {
@@ -205,6 +245,12 @@ export default function ShuthyamDashboard() {
                     </p>
                 </div>
             </div>
+            {activePage === 'Dashboard' && (
+                <div className="flex items-center space-x-2">
+                    <Label htmlFor="live-feed">Live Feed</Label>
+                    <Switch id="live-feed" checked={isLive} onCheckedChange={setIsLive} />
+                </div>
+            )}
         </header>
 
         {activePage === 'Dashboard' && (
@@ -229,7 +275,7 @@ export default function ShuthyamDashboard() {
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <div>
                         <h2 className="text-2xl font-bold mb-4">Reports</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {reportData.map((report) => (
                                 <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => {
                                     setSelectedWashroom(report)
@@ -240,7 +286,7 @@ export default function ShuthyamDashboard() {
                                         <CardDescription>{report.date}, {report.time}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 300 ? "text-destructive" : "text-muted-foreground")}>
+                                        <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 20 ? "text-destructive" : "text-muted-foreground")}>
                                             <Users className="h-4 w-4" />
                                             <span>{report.peopleUsed} people used</span>
                                         </div>
@@ -286,3 +332,5 @@ export default function ShuthyamDashboard() {
     </SidebarProvider>
   );
 }
+
+    
