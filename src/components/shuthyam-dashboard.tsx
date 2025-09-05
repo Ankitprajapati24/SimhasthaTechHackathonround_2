@@ -37,21 +37,21 @@ import AssignedDutiesPage from "./assigned-duties-page";
 import HistoryPage from "./history-page";
 
 const washrooms = [
-    'Washroom 1 (1st Floor, A-Block)',
-    'Washroom 2 (1st Floor, B-Block)',
-    'Washroom 3 (2nd Floor, A-Block)',
-    'Washroom 4 (2nd Floor, B-Block)',
-    'Washroom 5 (3rd Floor, C-Block)',
-    'Washroom 6 (Ground Floor, Main Lobby)',
-    'Washroom 7 (Basement, Parking Area)',
-    'Washroom 8 (4th Floor, Cafeteria)',
-    'Washroom 9 (5th Floor, West Wing)',
-    'Washroom 10 (5th Floor, East Wing)',
+    'Washroom 1',
+    'Washroom 2',
+    'Washroom 3',
+    'Washroom 4',
+    'Washroom 5',
+    'Washroom 6',
+    'Washroom 7',
+    'Washroom 8',
+    'Washroom 9',
+    'Washroom 10',
 ];
 
 const generateCleanlinessData = () => {
     return washrooms.map(name => ({
-        name: name.split('(')[0].trim(),
+        name: name,
         rating: Math.floor(Math.random() * 5) + 1
     }));
 };
@@ -224,8 +224,7 @@ export default function ShuthyamDashboard() {
                                     setIsDialogOpen(true)
                                 }}>
                                     <CardHeader>
-                                        <CardTitle className="text-lg">{report.washroom.split('(')[0].trim()}</CardTitle>
-                                        <CardDescription>{report.washroom.split('(')[1].replace(')','')}</CardDescription>
+                                        <CardTitle className="text-lg">{report.washroom}</CardTitle>
                                         <CardDescription>{report.date}, {report.time}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
