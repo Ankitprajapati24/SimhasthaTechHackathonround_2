@@ -12,29 +12,43 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-  SidebarGroup,
-  SidebarGroupLabel
 } from "@/components/ui/sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Home, ClipboardList, History, PanelLeft } from "lucide-react"
+import { Home, ClipboardList, History } from "lucide-react"
 
-const cleanlinessData = [
-  { name: 'Washroom 1', rating: 3 },
-  { name: 'Washroom 2', rating: 4 },
-  { name: 'Washroom 3', rating: 2 },
-  { name: 'Washroom 4', rating: 5 },
-  { name: 'Washroom 5', rating: 4 },
-];
+const generateCleanlinessData = () => {
+    return [
+        { name: 'Washroom 1', rating: Math.floor(Math.random() * 5) + 1 },
+        { name: 'Washroom 2', rating: Math.floor(Math.random() * 5) + 1 },
+        { name: 'Washroom 3', rating: Math.floor(Math.random() * 5) + 1 },
+        { name: 'Washroom 4', rating: Math.floor(Math.random() * 5) + 1 },
+        { name: 'Washroom 5', rating: Math.floor(Math.random() * 5) + 1 },
+    ];
+};
 
-const reportData = [
-    { washroom: 'Washroom 1', date: 'July 22', time: '8:00pm' },
-    { washroom: 'Washroom 2', date: 'July 22', time: '9:00pm' },
-    { washroom: 'Washroom 3', date: 'July 22', time: '10:00pm' },
-    { washroom: 'Washroom 4', date: 'July 22', time: '12:00pm' },
-];
+const generateReportData = () => {
+    const washrooms = ['Washroom 1', 'Washroom 2', 'Washroom 3', 'Washroom 4', 'Washroom 5'];
+    const now = new Date();
+    return Array.from({ length: 4 }, (_, i) => {
+        const reportTime = new Date(now.getTime() - Math.random() * 1000 * 60 * 60 * 24);
+        return {
+            washroom: washrooms[Math.floor(Math.random() * washrooms.length)],
+            date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
+            time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        }
+    }).sort((a,b) => a.washroom.localeCompare(b.washroom));
+};
+
 
 export default function ShuthyamDashboard() {
   const [activePage, setActivePage] = React.useState("Dashboard")
+  const [cleanlinessData, setCleanlinessData] = React.useState<any[]>([]);
+  const [reportData, setReportData] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    setCleanlinessData(generateCleanlinessData());
+    setReportData(generateReportData());
+  }, []);
 
   return (
     <SidebarProvider>
