@@ -14,6 +14,24 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 import { Home, ClipboardList, History, Users } from "lucide-react"
 import { cn } from "@/lib/utils";
 
@@ -33,6 +51,7 @@ const generateReportData = () => {
     return Array.from({ length: 4 }, (_, i) => {
         const reportTime = new Date(now.getTime() - Math.random() * 1000 * 60 * 60 * 24);
         return {
+            id: i,
             washroom: washrooms[Math.floor(Math.random() * washrooms.length)],
             date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
             time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
@@ -41,16 +60,39 @@ const generateReportData = () => {
     }).sort((a,b) => a.washroom.localeCompare(b.washroom));
 };
 
+const cleaningStaff = [
+    { id: '1', name: 'Ramesh' },
+    { id: '2', name: 'Suresh' },
+    { id: '3', name: 'Gita' },
+    { id: '4', name: 'Sita' },
+];
+
 
 export default function ShuthyamDashboard() {
   const [activePage, setActivePage] = React.useState("Dashboard")
   const [cleanlinessData, setCleanlinessData] = React.useState<any[]>([]);
   const [reportData, setReportData] = React.useState<any[]>([]);
+  const [selectedWashroom, setSelectedWashroom] = React.useState<any>(null);
+  const [selectedStaff, setSelectedStaff] = React.useState<string>("");
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     setCleanlinessData(generateCleanlinessData());
     setReportData(generateReportData());
   }, []);
+
+  const handleAssignDuty = () => {
+    if (selectedWashroom && selectedStaff) {
+      const staffMember = cleaningStaff.find(s => s.id === selectedStaff);
+      toast({
+        title: "Duty Assigned!",
+        description: `${staffMember?.name} has been assigned to clean ${selectedWashroom.washroom}.`,
+      });
+      setIsDialogOpen(false);
+      setSelectedStaff("");
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -115,25 +157,54 @@ export default function ShuthyamDashboard() {
                 </CardContent>
             </Card>
 
-            <div>
-                <h2 className="text-2xl font-bold mb-4">Reports</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {reportData.map((report, index) => (
-                        <Card key={index}>
-                            <CardHeader>
-                                <CardTitle className="text-lg">{report.washroom}</CardTitle>
-                                <CardDescription>{report.date}, {report.time}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 300 ? "text-destructive" : "text-muted-foreground")}>
-                                    <Users className="h-4 w-4" />
-                                    <span>{report.peopleUsed} people used</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <div>
+                    <h2 className="text-2xl font-bold mb-4">Reports</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {reportData.map((report) => (
+                             <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => {
+                                setSelectedWashroom(report)
+                                setIsDialogOpen(true)
+                             }}>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">{report.washroom}</CardTitle>
+                                    <CardDescription>{report.date}, {report.time}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 300 ? "text-destructive" : "text-muted-foreground")}>
+                                        <Users className="h-4 w-4" />
+                                        <span>{report.peopleUsed} people used</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
                 </div>
-            </div>
+                <DialogContent>
+                    <DialogHeader>
+                    <DialogTitle>Assign Cleaning Duty</DialogTitle>
+                    <DialogDescription>
+                        Assign a cleaning staff member to {selectedWashroom?.washroom}.
+                    </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Select onValueChange={setSelectedStaff} value={selectedStaff}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a staff member" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {cleaningStaff.map(staff => (
+                                    <SelectItem key={staff.id} value={staff.id}>{staff.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAssignDuty} disabled={!selectedStaff}>Assign Duty</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
       </SidebarInset>
     </SidebarProvider>
