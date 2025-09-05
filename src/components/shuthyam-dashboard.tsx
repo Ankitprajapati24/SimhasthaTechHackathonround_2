@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Home, ClipboardList, History, Users } from "lucide-react"
+import { cn } from "@/lib/utils";
 
 const generateCleanlinessData = () => {
     return [
@@ -35,7 +36,7 @@ const generateReportData = () => {
             washroom: washrooms[Math.floor(Math.random() * washrooms.length)],
             date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
             time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            peopleUsed: Math.floor(Math.random() * 201) + 100,
+            peopleUsed: Math.floor(Math.random() * 301) + 100,
         }
     }).sort((a,b) => a.washroom.localeCompare(b.washroom));
 };
@@ -124,7 +125,7 @@ export default function ShuthyamDashboard() {
                                 <CardDescription>{report.date}, {report.time}</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 300 ? "text-destructive" : "text-muted-foreground")}>
                                     <Users className="h-4 w-4" />
                                     <span>{report.peopleUsed} people used</span>
                                 </div>
