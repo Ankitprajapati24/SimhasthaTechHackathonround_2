@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Home, ClipboardList, History, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import AssignedDutiesPage from "./assigned-duties-page";
+import HistoryPage from "./history-page";
 
 const generateCleanlinessData = () => {
     return [
@@ -75,6 +76,7 @@ export interface AssignedDuty {
   staffName: string;
   assignedTime: string;
   status: DutyStatus;
+  completedTime?: string;
 }
 
 export default function ShuthyamDashboard() {
@@ -116,11 +118,21 @@ export default function ShuthyamDashboard() {
 
   const handleStatusChange = (dutyId: number, newStatus: DutyStatus) => {
     setAssignedDuties(prevDuties =>
-      prevDuties.map(duty =>
-        duty.id === dutyId ? { ...duty, status: newStatus } : duty
-      )
+      prevDuties.map(duty => {
+        if (duty.id === dutyId) {
+          const updatedDuty = { ...duty, status: newStatus };
+          if (newStatus === "Completed") {
+            updatedDuty.completedTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+          }
+          return updatedDuty;
+        }
+        return duty;
+      })
     );
   };
+  
+  const activeDuties = assignedDuties.filter(duty => duty.status !== 'Completed');
+  const completedDuties = assignedDuties.filter(duty => duty.status === 'Completed');
 
   return (
     <SidebarProvider>
@@ -165,7 +177,9 @@ export default function ShuthyamDashboard() {
                     <p className="text-muted-foreground">
                         {activePage === 'Dashboard' 
                             ? 'Overview of cleanliness report and trends'
-                            : 'Track and manage cleaning duties'
+                            : activePage === 'Assigned Duties'
+                            ? 'Track and manage cleaning duties'
+                            : 'View history of completed cleaning duties'
                         }
                     </p>
                 </div>
@@ -242,7 +256,10 @@ export default function ShuthyamDashboard() {
             </div>
         )}
         {activePage === 'Assigned Duties' && (
-            <AssignedDutiesPage duties={assignedDuties} onStatusChange={handleStatusChange} />
+            <AssignedDutiesPage duties={activeDuties} onStatusChange={handleStatusChange} />
+        )}
+        {activePage === 'History' && (
+            <HistoryPage completedDuties={completedDuties} />
         )}
       </SidebarInset>
     </SidebarProvider>
