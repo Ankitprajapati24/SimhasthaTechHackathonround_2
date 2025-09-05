@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   Sidebar,
   SidebarContent,
@@ -14,7 +14,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Home, ClipboardList, History } from "lucide-react"
+import { Home, ClipboardList, History, Users } from "lucide-react"
 
 const generateCleanlinessData = () => {
     return [
@@ -35,6 +35,7 @@ const generateReportData = () => {
             washroom: washrooms[Math.floor(Math.random() * washrooms.length)],
             date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
             time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+            peopleUsed: Math.floor(Math.random() * 100) + 10,
         }
     }).sort((a,b) => a.washroom.localeCompare(b.washroom));
 };
@@ -122,6 +123,12 @@ export default function ShuthyamDashboard() {
                                 <CardTitle className="text-lg">{report.washroom}</CardTitle>
                                 <CardDescription>{report.date}, {report.time}</CardDescription>
                             </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Users className="h-4 w-4" />
+                                    <span>{report.peopleUsed} people used</span>
+                                </div>
+                            </CardContent>
                         </Card>
                     ))}
                 </div>
