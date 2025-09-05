@@ -10,12 +10,14 @@ import {
   History,
   Lightbulb,
   Loader2,
+  Rss,
   Timer,
   Users,
   UserPlus,
 } from 'lucide-react';
 
 import { reasonAboutOccupancy, type ReasonAboutOccupancyInput } from '@/ai/flows/reason-about-occupancy';
+import { fetchFromUrl } from '@/ai/flows/fetch-from-url';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 type Cleaner = {
   id: string;
@@ -46,6 +50,7 @@ const cleaners: Cleaner[] = [
 ];
 
 const OCCUPANCY_THRESHOLD = 10;
+const FLASK_APP_URL = 'http://127.0.0.1:5000/count'; // Placeholder URL
 
 export default function CountCleanDashboard() {
   const [occupancy, setOccupancy] = useState(0);
@@ -56,6 +61,8 @@ export default function CountCleanDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCleaner, setSelectedCleaner] = useState<string | undefined>();
+  const [useLiveFeed, setUseLiveFeed] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
   const { toast } = useToast();
 
@@ -74,6 +81,52 @@ export default function CountCleanDashboard() {
       setCleaningTasks(prev => [...prev, { id: Date.now(), status: 'Pending Assignment' }]);
     }
   }, [isThresholdBreached, activeTask]);
+  
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+    if (useLiveFeed) {
+      const fetchLiveCount = async () => {
+        setIsFetching(true);
+        try {
+          const result = await fetchFromUrl({ url: FLASK_APP_URL });
+          // Assuming the flask app returns { "count": <number> }
+          const newCount = result.data.count;
+          
+          if (newCount !== occupancy) {
+             const input: ReasonAboutOccupancyInput = {
+                entranceCount: Math.max(0, newCount - occupancy),
+                exitCount: Math.max(0, occupancy - newCount),
+                previousOccupancy: occupancy,
+                threshold: OCCUPANCY_THRESHOLD,
+            };
+            const reasonResult = await reasonAboutOccupancy(input);
+            setOccupancy(reasonResult.occupancy);
+            setPreviousOccupancy(reasonResult.occupancy);
+            setReasoning(reasonResult.reasoning);
+            setIsThresholdBreached(reasonResult.isThresholdBreached);
+          }
+        } catch (error) {
+          console.error("Failed to fetch from Flask app:", error);
+          toast({
+            variant: "destructive",
+            title: "Live Feed Error",
+            description: "Could not fetch data from the live feed. Please check if your app is running.",
+          });
+          setUseLiveFeed(false); // Toggle off on error
+        } finally {
+            setIsFetching(false);
+        }
+      };
+      
+      fetchLiveCount();
+      interval = setInterval(fetchLiveCount, 5000); // Fetch every 5 seconds
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [useLiveFeed, occupancy]);
 
   const handlePersonEvent = async (type: 'enter' | 'exit') => {
     setIsLoading(true);
@@ -139,22 +192,33 @@ export default function CountCleanDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Users className="text-primary-foreground/70" /> Sensor Simulation</CardTitle>
-              <CardDescription>Simulate people entering and exiting the washroom.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <Button size="lg" onClick={() => handlePersonEvent('enter')} disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : <ArrowRightCircle />}
-                Person Enters
-              </Button>
-              <Button size="lg" onClick={() => handlePersonEvent('exit')} disabled={isLoading} variant="secondary">
-                 {isLoading ? <Loader2 className="animate-spin" /> : <ArrowLeftCircle />}
-                Person Exits
-              </Button>
-            </CardContent>
-          </Card>
+           <Card className="shadow-lg">
+             <CardHeader>
+               <CardTitle className="flex items-center justify-between">
+                 <div className="flex items-center gap-2"><Users className="text-primary-foreground/70" /> Sensor Input</div>
+                 <div className="flex items-center space-x-2">
+                   {isFetching ? <Loader2 className="animate-spin text-primary" /> : <Rss className={useLiveFeed ? 'text-green-500' : 'text-muted-foreground'} />}
+                   <Label htmlFor="live-feed-switch">Live Feed</Label>
+                   <Switch id="live-feed-switch" checked={useLiveFeed} onCheckedChange={setUseLiveFeed} />
+                 </div>
+               </CardTitle>
+               <CardDescription>
+                 {useLiveFeed ? 'Receiving live data from auto-counter.' : 'Simulate people entering and exiting the washroom.'}
+               </CardDescription>
+             </CardHeader>
+             {!useLiveFeed && (
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <Button size="lg" onClick={() => handlePersonEvent('enter')} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="animate-spin" /> : <ArrowRightCircle />}
+                    Person Enters
+                  </Button>
+                  <Button size="lg" onClick={() => handlePersonEvent('exit')} disabled={isLoading} variant="secondary">
+                     {isLoading ? <Loader2 className="animate-spin" /> : <ArrowLeftCircle />}
+                    Person Exits
+                  </Button>
+                </CardContent>
+             )}
+           </Card>
           
           <Card className="shadow-lg">
             <CardHeader>
