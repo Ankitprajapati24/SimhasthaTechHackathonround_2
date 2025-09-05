@@ -35,7 +35,7 @@ const generateReportData = () => {
             washroom: washrooms[Math.floor(Math.random() * washrooms.length)],
             date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
             time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            peopleUsed: Math.floor(Math.random() * 100) + 10,
+            peopleUsed: Math.floor(Math.random() * 201) + 100,
         }
     }).sort((a,b) => a.washroom.localeCompare(b.washroom));
 };
