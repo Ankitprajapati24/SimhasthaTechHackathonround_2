@@ -65,7 +65,7 @@ const generateReportData = () => {
             washroom: washrooms[i],
             date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
             time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            peopleUsed: Math.floor(Math.random() * 301) + 100,
+            peopleUsed: Math.floor(Math.random() * 401) + 100,
         }
     }).sort((a,b) => a.washroom.localeCompare(b.washroom));
 };
@@ -99,9 +99,21 @@ export default function ShuthyamDashboard() {
   const { toast } = useToast();
 
   React.useEffect(() => {
-    setCleanlinessData(generateCleanlinessData());
-    setReportData(generateReportData());
-  }, []);
+    const newCleanlinessData = generateCleanlinessData();
+    const newReportData = generateReportData();
+    setCleanlinessData(newCleanlinessData);
+    setReportData(newReportData);
+
+    newReportData.forEach(report => {
+        if (report.peopleUsed > 400) {
+            toast({
+                variant: "destructive",
+                title: "High Washroom Usage Alert",
+                description: `${report.washroom} has been used by over 400 people.`,
+            })
+        }
+    })
+  }, [toast]);
 
   const handleAssignDuty = () => {
     if (selectedWashroom && selectedStaff) {
