@@ -150,7 +150,7 @@ export default function ShuthyamDashboard() {
           <div className="flex items-center gap-2 p-2">
             <SidebarTrigger className="md:hidden" />
             <h1 className="text-2xl font-bold group-data-[collapsible=icon]:hidden">
-              Shuthyam
+              Shudhyam
             </h1>
           </div>
         </SidebarHeader>
