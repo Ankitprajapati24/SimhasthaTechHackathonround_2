@@ -36,24 +36,33 @@ import { cn } from "@/lib/utils"
 import AssignedDutiesPage from "./assigned-duties-page";
 import HistoryPage from "./history-page";
 
+const washrooms = [
+    'Washroom 1 (1st Floor, A-Block)',
+    'Washroom 2 (1st Floor, B-Block)',
+    'Washroom 3 (2nd Floor, A-Block)',
+    'Washroom 4 (2nd Floor, B-Block)',
+    'Washroom 5 (3rd Floor, C-Block)',
+    'Washroom 6 (Ground Floor, Main Lobby)',
+    'Washroom 7 (Basement, Parking Area)',
+    'Washroom 8 (4th Floor, Cafeteria)',
+    'Washroom 9 (5th Floor, West Wing)',
+    'Washroom 10 (5th Floor, East Wing)',
+];
+
 const generateCleanlinessData = () => {
-    return [
-        { name: 'Washroom 1', rating: Math.floor(Math.random() * 5) + 1 },
-        { name: 'Washroom 2', rating: Math.floor(Math.random() * 5) + 1 },
-        { name: 'Washroom 3', rating: Math.floor(Math.random() * 5) + 1 },
-        { name: 'Washroom 4', rating: Math.floor(Math.random() * 5) + 1 },
-        { name: 'Washroom 5', rating: Math.floor(Math.random() * 5) + 1 },
-    ];
+    return washrooms.map(name => ({
+        name: name.split('(')[0].trim(),
+        rating: Math.floor(Math.random() * 5) + 1
+    }));
 };
 
 const generateReportData = () => {
-    const washrooms = ['Washroom 1', 'Washroom 2', 'Washroom 3', 'Washroom 4', 'Washroom 5'];
     const now = new Date();
-    return Array.from({ length: 4 }, (_, i) => {
+    return Array.from({ length: washrooms.length }, (_, i) => {
         const reportTime = new Date(now.getTime() - Math.random() * 1000 * 60 * 60 * 24);
         return {
             id: i,
-            washroom: washrooms[Math.floor(Math.random() * washrooms.length)],
+            washroom: washrooms[i],
             date: reportTime.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
             time: reportTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
             peopleUsed: Math.floor(Math.random() * 301) + 100,
@@ -215,7 +224,8 @@ export default function ShuthyamDashboard() {
                                     setIsDialogOpen(true)
                                 }}>
                                     <CardHeader>
-                                        <CardTitle className="text-lg">{report.washroom}</CardTitle>
+                                        <CardTitle className="text-lg">{report.washroom.split('(')[0].trim()}</CardTitle>
+                                        <CardDescription>{report.washroom.split('(')[1].replace(')','')}</CardDescription>
                                         <CardDescription>{report.date}, {report.time}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
