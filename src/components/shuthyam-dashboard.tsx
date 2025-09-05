@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -33,7 +32,8 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { Home, ClipboardList, History, Users } from "lucide-react"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
+import AssignedDutiesPage from "./assigned-duties-page";
 
 const generateCleanlinessData = () => {
     return [
@@ -67,6 +67,15 @@ const cleaningStaff = [
     { id: '4', name: 'Sita' },
 ];
 
+export type DutyStatus = "Pending" | "Assigned" | "In Progress" | "Completed";
+
+export interface AssignedDuty {
+  id: number;
+  washroom: string;
+  staffName: string;
+  assignedTime: string;
+  status: DutyStatus;
+}
 
 export default function ShuthyamDashboard() {
   const [activePage, setActivePage] = React.useState("Dashboard")
@@ -75,6 +84,7 @@ export default function ShuthyamDashboard() {
   const [selectedWashroom, setSelectedWashroom] = React.useState<any>(null);
   const [selectedStaff, setSelectedStaff] = React.useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [assignedDuties, setAssignedDuties] = React.useState<AssignedDuty[]>([]);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -85,13 +95,31 @@ export default function ShuthyamDashboard() {
   const handleAssignDuty = () => {
     if (selectedWashroom && selectedStaff) {
       const staffMember = cleaningStaff.find(s => s.id === selectedStaff);
-      toast({
-        title: "Duty Assigned!",
-        description: `${staffMember?.name} has been assigned to clean ${selectedWashroom.washroom}.`,
-      });
-      setIsDialogOpen(false);
-      setSelectedStaff("");
+      if (staffMember) {
+        const newDuty: AssignedDuty = {
+            id: Date.now(),
+            washroom: selectedWashroom.washroom,
+            staffName: staffMember.name,
+            assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+            status: 'Assigned'
+        };
+        setAssignedDuties(prevDuties => [...prevDuties, newDuty]);
+        toast({
+          title: "Duty Assigned!",
+          description: `${staffMember.name} has been assigned to clean ${selectedWashroom.washroom}.`,
+        });
+        setIsDialogOpen(false);
+        setSelectedStaff("");
+      }
     }
+  };
+
+  const handleStatusChange = (dutyId: number, newStatus: DutyStatus) => {
+    setAssignedDuties(prevDuties =>
+      prevDuties.map(duty =>
+        duty.id === dutyId ? { ...duty, status: newStatus } : duty
+      )
+    );
   };
 
   return (
@@ -133,79 +161,89 @@ export default function ShuthyamDashboard() {
             <div className="flex items-center gap-2">
                  <SidebarTrigger className="hidden md:flex" />
                  <div>
-                    <h1 className="text-3xl font-bold">Dashboard</h1>
-                    <p className="text-muted-foreground">Overview of cleanliness report and trends</p>
+                    <h1 className="text-3xl font-bold">{activePage}</h1>
+                    <p className="text-muted-foreground">
+                        {activePage === 'Dashboard' 
+                            ? 'Overview of cleanliness report and trends'
+                            : 'Track and manage cleaning duties'
+                        }
+                    </p>
                 </div>
             </div>
         </header>
 
-        <div className="space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Average Cleanliness Score</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={cleanlinessData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis type="number" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} label={{ value: 'Average rating', angle: -90, position: 'insideLeft' }} />
-                        <Tooltip />
-                        <Bar dataKey="rating" fill="hsl(var(--primary))" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+        {activePage === 'Dashboard' && (
+            <div className="space-y-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Average Cleanliness Score</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={cleanlinessData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis type="number" domain={[0, 5]} ticks={[1, 2, 3, 4, 5]} label={{ value: 'Average rating', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
+                            <Bar dataKey="rating" fill="hsl(var(--primary))" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <div>
-                    <h2 className="text-2xl font-bold mb-4">Reports</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {reportData.map((report) => (
-                             <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => {
-                                setSelectedWashroom(report)
-                                setIsDialogOpen(true)
-                             }}>
-                                <CardHeader>
-                                    <CardTitle className="text-lg">{report.washroom}</CardTitle>
-                                    <CardDescription>{report.date}, {report.time}</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 300 ? "text-destructive" : "text-muted-foreground")}>
-                                        <Users className="h-4 w-4" />
-                                        <span>{report.peopleUsed} people used</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <div>
+                        <h2 className="text-2xl font-bold mb-4">Reports</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {reportData.map((report) => (
+                                <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => {
+                                    setSelectedWashroom(report)
+                                    setIsDialogOpen(true)
+                                }}>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">{report.washroom}</CardTitle>
+                                        <CardDescription>{report.date}, {report.time}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 300 ? "text-destructive" : "text-muted-foreground")}>
+                                            <Users className="h-4 w-4" />
+                                            <span>{report.peopleUsed} people used</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
                     </div>
-                </div>
-                <DialogContent>
-                    <DialogHeader>
-                    <DialogTitle>Assign Cleaning Duty</DialogTitle>
-                    <DialogDescription>
-                        Assign a cleaning staff member to {selectedWashroom?.washroom}.
-                    </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Select onValueChange={setSelectedStaff} value={selectedStaff}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a staff member" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {cleaningStaff.map(staff => (
-                                    <SelectItem key={staff.id} value={staff.id}>{staff.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAssignDuty} disabled={!selectedStaff}>Assign Duty</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                    <DialogContent>
+                        <DialogHeader>
+                        <DialogTitle>Assign Cleaning Duty</DialogTitle>
+                        <DialogDescription>
+                            Assign a cleaning staff member to {selectedWashroom?.washroom}.
+                        </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Select onValueChange={setSelectedStaff} value={selectedStaff}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a staff member" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {cleaningStaff.map(staff => (
+                                        <SelectItem key={staff.id} value={staff.id}>{staff.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleAssignDuty} disabled={!selectedStaff}>Assign Duty</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+        )}
+        {activePage === 'Assigned Duties' && (
+            <AssignedDutiesPage duties={assignedDuties} onStatusChange={handleStatusChange} />
+        )}
       </SidebarInset>
     </SidebarProvider>
   );
