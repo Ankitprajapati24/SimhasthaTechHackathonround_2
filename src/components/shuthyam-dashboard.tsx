@@ -110,7 +110,6 @@ export default function ShudhyamDashboard() {
             status: 'Assigned'
         };
         
-        // This toast call is safe inside the callback, as it's triggered by user events
         toast({
           title: "Duty Assigned!",
           description: `${staffName} has been assigned to clean ${washroom}.`,
@@ -136,9 +135,7 @@ export default function ShudhyamDashboard() {
             assignDuty(report.washroom, staffToAssign.name);
         }
     });
-  // The dependency array ensures this effect runs when reportData or assignedDuties change.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData, assignedDuties]);
+  }, [reportData, assignedDuties, assignDuty]);
 
 
   const handleManualAssignDuty = () => {
