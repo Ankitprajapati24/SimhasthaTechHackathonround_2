@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, ArrowLeft, ArrowRight, Video } from "lucide-react";
+import { Users, ArrowLeft, ArrowRight, Video, Camera } from "lucide-react";
 
 interface LiveViewPageProps {
   washroom: {
