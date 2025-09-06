@@ -35,9 +35,6 @@ import { Home, ClipboardList, History, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import AssignedDutiesPage from "./assigned-duties-page";
 import HistoryPage from "./history-page";
-import { fetchFromUrl } from "@/ai/flows/fetch-from-url";
-import { Label } from "./ui/label";
-import { Switch } from "./ui/switch";
 
 const washrooms = [
     'Washroom 1',
@@ -65,7 +62,7 @@ const generateInitialReportData = () => {
         washroom: name,
         date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }),
         time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        peopleUsed: Math.floor(Math.random() * 500) + 50, // Generates a number between 50 and 550
+        peopleUsed: Math.floor(Math.random() * 500) + 50,
     }));
 };
 
@@ -96,6 +93,22 @@ export default function ShudhyamDashboard() {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [assignedDuties, setAssignedDuties] = React.useState<AssignedDuty[]>([]);
   const { toast } = useToast();
+  const lastAssignedStaffIndex = React.useRef(-1);
+
+  const assignDuty = React.useCallback((washroom: string, staffName: string) => {
+    const newDuty: AssignedDuty = {
+        id: Date.now() + Math.random(),
+        washroom: washroom,
+        staffName: staffName,
+        assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        status: 'Assigned'
+    };
+    setAssignedDuties(prevDuties => [...prevDuties, newDuty]);
+    toast({
+      title: "Duty Assigned!",
+      description: `${staffName} has been assigned to clean ${washroom}.`,
+    });
+  }, [toast]);
 
   React.useEffect(() => {
     const newCleanlinessData = generateCleanlinessData();
@@ -103,35 +116,26 @@ export default function ShudhyamDashboard() {
     setCleanlinessData(newCleanlinessData);
     setReportData(newReportData);
 
+    const existingAssignedWashrooms = new Set(assignedDuties.map(d => d.washroom));
+
     newReportData.forEach(report => {
-        if (report.peopleUsed > 400) {
-            toast({
-                variant: "destructive",
-                title: "High Washroom Usage Alert",
-                description: `${report.washroom} has been used by over 400 people.`,
-            });
+        if (report.peopleUsed > 400 && !existingAssignedWashrooms.has(report.washroom)) {
+            
+            lastAssignedStaffIndex.current = (lastAssignedStaffIndex.current + 1) % cleaningStaff.length;
+            const staffToAssign = cleaningStaff[lastAssignedStaffIndex.current];
+            
+            assignDuty(report.washroom, staffToAssign.name);
         }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  }, [toast]);
 
-
-  const handleAssignDuty = () => {
+  const handleManualAssignDuty = () => {
     if (selectedWashroom && selectedStaff) {
       const staffMember = cleaningStaff.find(s => s.id === selectedStaff);
       if (staffMember) {
-        const newDuty: AssignedDuty = {
-            id: Date.now(),
-            washroom: selectedWashroom.washroom,
-            staffName: staffMember.name,
-            assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            status: 'Assigned'
-        };
-        setAssignedDuties(prevDuties => [...prevDuties, newDuty]);
-        toast({
-          title: "Duty Assigned!",
-          description: `${staffMember.name} has been assigned to clean ${selectedWashroom.washroom}.`,
-        });
+        assignDuty(selectedWashroom.washroom, staffMember.name);
         setIsDialogOpen(false);
         setSelectedStaff("");
       }
@@ -254,7 +258,7 @@ export default function ShudhyamDashboard() {
                         <DialogHeader>
                         <DialogTitle>Assign Cleaning Duty</DialogTitle>
                         <DialogDescription>
-                            Assign a cleaning staff member to {selectedWashroom?.washroom}.
+                            Manually assign a cleaning staff member to {selectedWashroom?.washroom}.
                         </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
@@ -271,7 +275,7 @@ export default function ShudhyamDashboard() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                            <Button onClick={handleAssignDuty} disabled={!selectedStaff}>Assign Duty</Button>
+                            <Button onClick={handleManualAssignDuty} disabled={!selectedStaff}>Assign Duty</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
