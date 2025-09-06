@@ -83,6 +83,7 @@ export interface AssignedDuty {
   assignedTime: string;
   status: DutyStatus;
   completedTime?: string;
+  isNew?: boolean;
 }
 
 export default function ShudhyamDashboard() {
@@ -97,7 +98,7 @@ export default function ShudhyamDashboard() {
   const { toast } = useToast();
   const lastAssignedStaffIndex = React.useRef(-1);
 
-  const assignDuty = React.useCallback((washroom: string, staffName: string) => {
+  const assignDuty = React.useCallback((washroom: string, staffName: string, isManual: boolean = false) => {
     setAssignedDuties(prevDuties => {
         const existingDuty = prevDuties.find(d => d.washroom === washroom && d.status !== 'Completed');
         if (existingDuty) return prevDuties;
@@ -107,17 +108,27 @@ export default function ShudhyamDashboard() {
             washroom: washroom,
             staffName: staffName,
             assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            status: 'Assigned'
+            status: 'Assigned',
+            isNew: true, // Flag for notification effect
         };
         
-        toast({
-          title: "Duty Assigned!",
-          description: `${staffName} has been assigned to clean ${washroom}.`,
-        });
-
         return [...prevDuties, newDuty];
     });
-  }, [toast]);
+  }, []);
+
+  React.useEffect(() => {
+    const newDuties = assignedDuties.filter(d => d.isNew);
+    if (newDuties.length > 0) {
+      newDuties.forEach(duty => {
+        toast({
+          title: "Duty Assigned!",
+          description: `${duty.staffName} has been assigned to clean ${duty.washroom}.`,
+        });
+      });
+      // Reset the 'isNew' flag
+      setAssignedDuties(duties => duties.map(d => ({ ...d, isNew: false })));
+    }
+  }, [assignedDuties, toast]);
 
   React.useEffect(() => {
     const newCleanlinessData = generateCleanlinessData();
@@ -142,7 +153,7 @@ export default function ShudhyamDashboard() {
     if (selectedWashroom && selectedStaff) {
       const staffMember = cleaningStaff.find(s => s.id === selectedStaff);
       if (staffMember) {
-        assignDuty(selectedWashroom.washroom, staffMember.name);
+        assignDuty(selectedWashroom.washroom, staffMember.name, true);
         setIsDialogOpen(false);
         setSelectedStaff("");
       }
