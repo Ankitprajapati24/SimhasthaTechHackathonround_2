@@ -31,10 +31,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { Home, ClipboardList, History, Users } from "lucide-react"
+import { Home, ClipboardList, History, Users, Camera } from "lucide-react"
 import { cn } from "@/lib/utils"
 import AssignedDutiesPage from "./assigned-duties-page";
 import HistoryPage from "./history-page";
+import LiveViewPage from "./live-view-page";
 
 const washrooms = [
     'Washroom 1',
@@ -89,6 +90,7 @@ export default function ShudhyamDashboard() {
   const [cleanlinessData, setCleanlinessData] = React.useState<any[]>([]);
   const [reportData, setReportData] = React.useState<any[]>([]);
   const [selectedWashroom, setSelectedWashroom] = React.useState<any>(null);
+  const [washroomForLiveView, setWashroomForLiveView] = React.useState<any>(null);
   const [selectedStaff, setSelectedStaff] = React.useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [assignedDuties, setAssignedDuties] = React.useState<AssignedDuty[]>([]);
@@ -96,17 +98,22 @@ export default function ShudhyamDashboard() {
   const lastAssignedStaffIndex = React.useRef(-1);
 
   const assignDuty = React.useCallback((washroom: string, staffName: string) => {
-    const newDuty: AssignedDuty = {
-        id: Date.now() + Math.random(),
-        washroom: washroom,
-        staffName: staffName,
-        assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-        status: 'Assigned'
-    };
-    setAssignedDuties(prevDuties => [...prevDuties, newDuty]);
-    toast({
-      title: "Duty Assigned!",
-      description: `${staffName} has been assigned to clean ${washroom}.`,
+    setAssignedDuties(prevDuties => {
+        const existingDuty = prevDuties.find(d => d.washroom === washroom && d.status !== 'Completed');
+        if (existingDuty) return prevDuties;
+
+        const newDuty: AssignedDuty = {
+            id: Date.now() + Math.random(),
+            washroom: washroom,
+            staffName: staffName,
+            assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+            status: 'Assigned'
+        };
+        toast({
+          title: "Duty Assigned!",
+          description: `${staffName} has been assigned to clean ${washroom}.`,
+        });
+        return [...prevDuties, newDuty];
     });
   }, [toast]);
 
@@ -116,14 +123,12 @@ export default function ShudhyamDashboard() {
     setCleanlinessData(newCleanlinessData);
     setReportData(newReportData);
 
-    const existingAssignedWashrooms = new Set(assignedDuties.map(d => d.washroom));
+    const assignedWashrooms = new Set(assignedDuties.map(d => d.washroom));
 
     newReportData.forEach(report => {
-        if (report.peopleUsed > 400 && !existingAssignedWashrooms.has(report.washroom)) {
-            
+        if (report.peopleUsed > 400 && !assignedWashrooms.has(report.washroom)) {
             lastAssignedStaffIndex.current = (lastAssignedStaffIndex.current + 1) % cleaningStaff.length;
             const staffToAssign = cleaningStaff[lastAssignedStaffIndex.current];
-            
             assignDuty(report.washroom, staffToAssign.name);
         }
     });
@@ -156,9 +161,33 @@ export default function ShudhyamDashboard() {
       })
     );
   };
+
+  const handleWashroomCardClick = (report: any) => {
+    setWashroomForLiveView(report);
+    setActivePage('Live View');
+  }
+
+  const handleBackFromLiveView = () => {
+    setWashroomForLiveView(null);
+    setActivePage('Dashboard');
+  }
   
   const activeDuties = assignedDuties.filter(duty => duty.status !== 'Completed');
   const completedDuties = assignedDuties.filter(duty => duty.status === 'Completed');
+
+  const pageTitle = activePage === 'Live View' && washroomForLiveView 
+    ? `Live View: ${washroomForLiveView.washroom}` 
+    : activePage;
+    
+  const pageDescription = activePage === 'Dashboard' 
+    ? 'Overview of cleanliness report and trends'
+    : activePage === 'Assigned Duties'
+    ? 'Track and manage cleaning duties'
+    : activePage === 'History'
+    ? 'View history of completed cleaning duties'
+    : activePage === 'Live View' && washroomForLiveView
+    ? `Real-time status and camera feed for ${washroomForLiveView.washroom}`
+    : 'Select a washroom from the dashboard to see its live view';
 
   return (
     <SidebarProvider>
@@ -177,6 +206,12 @@ export default function ShudhyamDashboard() {
                     <SidebarMenuButton onClick={() => setActivePage('Dashboard')} isActive={activePage === 'Dashboard'} tooltip="Dashboard">
                         <Home />
                         <span>Dashboard</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => setActivePage('Live View')} isActive={activePage === 'Live View'} tooltip="Live View">
+                        <Camera />
+                        <span>Live View</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
@@ -199,15 +234,8 @@ export default function ShudhyamDashboard() {
             <div className="flex items-center gap-2">
                  <SidebarTrigger className="hidden md:flex" />
                  <div>
-                    <h1 className="text-3xl font-bold">{activePage}</h1>
-                    <p className="text-muted-foreground">
-                        {activePage === 'Dashboard' 
-                            ? 'Overview of cleanliness report and trends'
-                            : activePage === 'Assigned Duties'
-                            ? 'Track and manage cleaning duties'
-                            : 'View history of completed cleaning duties'
-                        }
-                    </p>
+                    <h1 className="text-3xl font-bold">{pageTitle}</h1>
+                    <p className="text-muted-foreground">{pageDescription}</p>
                 </div>
             </div>
         </header>
@@ -236,18 +264,22 @@ export default function ShudhyamDashboard() {
                         <h2 className="text-2xl font-bold mb-4">Reports</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {reportData.map((report) => (
-                                <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => {
-                                    setSelectedWashroom(report)
-                                    setIsDialogOpen(true)
-                                }}>
+                                <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => handleWashroomCardClick(report)}>
                                     <CardHeader>
                                         <CardTitle className="text-lg">{report.washroom}</CardTitle>
                                         <CardDescription>{report.date}, {report.time}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 400 ? "text-destructive" : "text-muted-foreground")}>
-                                            <Users className="h-4 w-4" />
-                                            <span>{report.peopleUsed} people used</span>
+                                        <div className="flex items-center justify-between">
+                                            <div className={cn("flex items-center gap-2 text-sm", report.peopleUsed > 400 ? "text-destructive" : "text-muted-foreground")}>
+                                                <Users className="h-4 w-4" />
+                                                <span>{report.peopleUsed} people used</span>
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedWashroom(report);
+                                                setIsDialogOpen(true);
+                                            }}>Assign</Button>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -280,6 +312,9 @@ export default function ShudhyamDashboard() {
                     </DialogContent>
                 </Dialog>
             </div>
+        )}
+        {activePage === 'Live View' && (
+             <LiveViewPage washroom={washroomForLiveView} onBack={handleBackFromLiveView} />
         )}
         {activePage === 'Assigned Duties' && (
             <AssignedDutiesPage duties={activeDuties} onStatusChange={handleStatusChange} />
