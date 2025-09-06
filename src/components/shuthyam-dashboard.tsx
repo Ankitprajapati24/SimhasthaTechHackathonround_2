@@ -109,10 +109,13 @@ export default function ShudhyamDashboard() {
             assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
             status: 'Assigned'
         };
+        
+        // This toast call is safe inside the callback, as it's triggered by user events
         toast({
           title: "Duty Assigned!",
           description: `${staffName} has been assigned to clean ${washroom}.`,
         });
+
         return [...prevDuties, newDuty];
     });
   }, [toast]);
@@ -122,18 +125,20 @@ export default function ShudhyamDashboard() {
     const newReportData = generateInitialReportData();
     setCleanlinessData(newCleanlinessData);
     setReportData(newReportData);
+  }, []);
 
+  React.useEffect(() => {
     const assignedWashrooms = new Set(assignedDuties.map(d => d.washroom));
-
-    newReportData.forEach(report => {
+    reportData.forEach(report => {
         if (report.peopleUsed > 400 && !assignedWashrooms.has(report.washroom)) {
             lastAssignedStaffIndex.current = (lastAssignedStaffIndex.current + 1) % cleaningStaff.length;
             const staffToAssign = cleaningStaff[lastAssignedStaffIndex.current];
             assignDuty(report.washroom, staffToAssign.name);
         }
     });
+  // The dependency array ensures this effect runs when reportData or assignedDuties change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reportData, assignedDuties]);
 
 
   const handleManualAssignDuty = () => {
