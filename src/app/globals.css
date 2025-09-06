@@ -85,3 +85,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes blink-red {
+    0%, 100% { 
+      border-color: hsl(var(--destructive)); 
+      box-shadow: 0 0 5px hsl(var(--destructive)); 
+    }
+    50% { 
+      border-color: transparent;
+      box-shadow: none;
+    }
+  }
+
+  .blinking-alert {
+    animation: blink-red 1.5s infinite;
+    border-width: 2px;
+  }
+}

@@ -98,21 +98,23 @@ export default function ShudhyamDashboard() {
   const { toast } = useToast();
   const lastAssignedStaffIndex = React.useRef(-1);
 
-  const assignDuty = React.useCallback((washroom: string, staffName: string, isManual: boolean = false) => {
+  const assignDuty = React.useCallback((washroom: string, staffName: string) => {
     setAssignedDuties(prevDuties => {
-        const existingDuty = prevDuties.find(d => d.washroom === washroom && d.status !== 'Completed');
-        if (existingDuty) return prevDuties;
-
-        const newDuty: AssignedDuty = {
-            id: Date.now() + Math.random(),
-            washroom: washroom,
-            staffName: staffName,
-            assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            status: 'Assigned',
-            isNew: true, // Flag for notification effect
-        };
-        
-        return [...prevDuties, newDuty];
+      const existingDuty = prevDuties.find(d => d.washroom === washroom && d.status !== 'Completed');
+      if (existingDuty) {
+        return prevDuties;
+      }
+  
+      const newDuty: AssignedDuty = {
+        id: Date.now() + Math.random(),
+        washroom: washroom,
+        staffName: staffName,
+        assignedTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+        status: 'Assigned',
+        isNew: true,
+      };
+      
+      return [...prevDuties, newDuty];
     });
   }, []);
 
@@ -125,7 +127,6 @@ export default function ShudhyamDashboard() {
           description: `${duty.staffName} has been assigned to clean ${duty.washroom}.`,
         });
       });
-      // Reset the 'isNew' flag
       setAssignedDuties(duties => duties.map(d => ({ ...d, isNew: false })));
     }
   }, [assignedDuties, toast]);
@@ -153,7 +154,7 @@ export default function ShudhyamDashboard() {
     if (selectedWashroom && selectedStaff) {
       const staffMember = cleaningStaff.find(s => s.id === selectedStaff);
       if (staffMember) {
-        assignDuty(selectedWashroom.washroom, staffMember.name, true);
+        assignDuty(selectedWashroom.washroom, staffMember.name);
         setIsDialogOpen(false);
         setSelectedStaff("");
       }
@@ -277,7 +278,7 @@ export default function ShudhyamDashboard() {
                         <h2 className="text-2xl font-bold mb-4">Reports</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {reportData.map((report) => (
-                                <Card key={report.id} className="cursor-pointer hover:border-primary" onClick={() => handleWashroomCardClick(report)}>
+                                <Card key={report.id} className={cn("cursor-pointer hover:border-primary", report.peopleUsed > 400 && "blinking-alert")} onClick={() => handleWashroomCardClick(report)}>
                                     <CardHeader>
                                         <CardTitle className="text-lg">{report.washroom}</CardTitle>
                                         <CardDescription>{report.date}, {report.time}</CardDescription>
